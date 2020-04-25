@@ -1,0 +1,21 @@
+{
+  "name": "pluto_idp_email_notifier",
+  "version": "1.0.0",
+  "description": "Pluto Email Notifier",
+  "main": "index.js",
+  "author": "Mihai Predoiu",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "start": "node index.js",
+    "start.dev": "nodemon -L index.js"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.3"
+  },
+  "dependencies": {
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "nodemailer": "^6.4.6"
+  }
+}
