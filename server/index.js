@@ -1,24 +1,33 @@
 'use strict'
 
 const express = require('express')
-var session = require('express-session')
+const session = require('express-session')
+const cookieParser = require('cookie-parser')
 const mongoose = require('mongoose')
-const bcrypt = require('bcrypt')
+const cors = require('cors')
+const axios = require('axios')
+
+const jwt = require('jsonwebtoken');
 
 const app = express()
 app.use(session({
   secret: 'secret',
-  resave: true,
-  saveUninitialized: true
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false }
 }))
+app.use(cookieParser())
 app.use(express.json())
+app.use(cors({
+  credentials: true, // enable set cookie
+}));
 
 const PORT = 8080
 
 // Connect to MongoDB
 mongoose
   .connect(
-    'mongodb://database:27017/',
+    'mongodb://localhost:27017/',
     {
       useNewUrlParser: true,
       useUnifiedTopology: true
@@ -29,6 +38,7 @@ mongoose
 
 const User = require('./data/models/Users.js')
 const Restaurant = require('./data/models/Restaurants.js')
+const Order = require('./data/models/Orders.js')
 
 String.prototype.hashCode = function () {
   let hash = 0
@@ -42,20 +52,25 @@ String.prototype.hashCode = function () {
 }
 
 
-app.get('/', async (req, res) => {
-  if (req.session.loggedin) {
-    res.send('Bine ai venit in aplicatie')
-  } else {
-    res.send('Trebuie sa te loghezi')
+app.get('/api/status', async (req, res) => {
+  try {
+    const token = req.headers.authorization.split(" ")[1]
+    const decoded = await jwt.verify(token, 'ultrasecretkey')
+
+    res.send({ username: decoded.username })
+  }
+  catch (e) {
+    res.status(401).send()
   }
 })
 
 app.get('/api/users', async (req, res) => {
-  if (req.session.loggedin && req.session.role === 'admin') {
+  try {
     const users = await User.find({})
     res.send(users)
-  } else {
-    res.status(401).send('Forbidden')
+  }
+  catch (e) {
+    res.status(500).send()
   }
 })
 
@@ -85,6 +100,7 @@ app.delete('/api/users/:id', async (req, res) => {
 
 app.post('/api/users/register', async (req, res) => {
   const { username, password, role } = req.body
+
   try {
     const hash = password.hashCode()
     const currentUser = await User.findOne({ username })
@@ -97,51 +113,113 @@ app.post('/api/users/register', async (req, res) => {
         role
       })
 
-      const newRestaurant = await new Restaurant({
-        userId: newUser.id
-      })
+      console.log('New User:\n', newUser)
 
       newUser.save()
-        .then(() => {
-          newRestaurant.save()
-            .then(() => res.send('success'))
-            .catch(e => res.status(500).send(e.message))
+        .then(async () => {
+          if (role === 'restaurant') {
+            const newRestaurant = await new Restaurant({
+              userId: newUser._id
+            })
+            newRestaurant.save()
+              .then(() => res.send('User registered sucessfully'))
+              .catch(e => res.status(500).send(e.message))
+          } else {
+            res.send('User registered sucessfully')
+          }
+
         })
         .catch(e => res.status(500).send(e.message))
     }
   }
-  catch (err) {
-    console.log(err)
+  catch (e) {
+    res.status(500).send(e.message)
+  }
+})
+
+app.post('/api/orders', async (req, res) => {
+  const { clientId, restaurantId, cart } = req.body
+
+  try {
+    const newOrder = await new Order({
+      clientId, restaurantId, cart
+    })
+
+    newOrder.save()
+      .then(() => {
+        axios.post('http://localhost:8082/api/notify', { email: 'predoiumihai@gmail.com', receipt: cart.map(item => ({ productName: item.name, price: item.price })) })
+        console.log(cart)
+        res.send('Order registered sucessfully')
+      })
+      .catch(e => {
+        console.log(e)
+        res.status(500).send(e.message)
+      })
+  }
+  catch (e) {
+    console.log(e)
+    res.status(500).send(e.message)
+  }
+})
+
+app.get('/api/orders/:id', async (req, res) => {
+  const { id } = req.params
+
+  try {
+    const restaurant = await Restaurant.findOne({ userId: id })
+
+    const orders = await Order.find({ restaurantId: restaurant.id })
+
+    if (orders) {
+      res.send(orders)
+    } else {
+      res.status(404).send()
+    }
+  }
+  catch (e) {
+    console.log(e)
+    res.status(404).send()
+  }
+})
+
+app.get('/api/orders', async (req, res) => {
+  const orders = await Order.find({})
+  console.log(orders)
+  if (orders) {
+    res.send(orders)
+  } else {
+    res.status(404).send()
   }
 })
 
 app.post('/api/users/login', async (req, res) => {
   const { username, password } = req.body
 
-  const user = await User.findOne({ username })
-  if (user && password.hashCode() !== user.password) {
-    req.session.loggedin = true
-    req.session.username = username
-    req.session.role = user.role
-    req.session._id = user.id
+  try {
+    const user = await User.findOne({ username })
+    if (user && password.hashCode() !== user.password) {
+      const token = await jwt.sign({ username, password }, 'ultrasecretkey')
 
-    res.send('success')
-  } else {
-    res.status(401).send('Wrong username or password.')
+      return res.send({ token, role: user.role, _id: user._id })
+    } else {
+      res.status(401).send('Wrong username or password.')
+    }
   }
+  catch (e) {
+    console.log(e)
+    res.status(500).send(e.message)
+  }
+
 })
 
-app.put('/api/restaurants', async (req, res) => {
-  const { id, role } = req.session
-  if (req.session.loggedin && role === 'restaurant') {
-    Restaurant.findOneAndUpdate({ userId: id }, { $push: { menu: req.body } }, { upsert: true, useFindAndModify: false }, function (err, doc) {
-      if (err)
-        res.status(500)
-      return res.send('Succesfully saved.')
-    })
-  } else {
-    res.status(500).send('Forbidden')
-  }
+app.put('/api/restaurants/:id', async (req, res) => {
+  const { id } = req.params
+  Restaurant.findOneAndUpdate({ userId: id }, { $push: { menu: req.body } }, { upsert: true, useFindAndModify: false }, function (err, doc) {
+    if (err)
+      res.status(500)
+    return res.send('Succesfully saved.')
+  })
+
 })
 
 app.delete('/api/restaurants', async (req, res) => {
@@ -168,9 +246,31 @@ app.delete('/api/restaurants/:id', async (req, res) => {
   }
 })
 
+app.get('/api/restaurants/:id', async (req, res) => {
+  const { id } = req.params
+
+  const restaurant = await Restaurant.findOne({ userId: id })
+  if (restaurant) {
+    res.send(restaurant)
+  } else {
+    res.status(404).send()
+  }
+})
+
 app.get('/api/restaurants', async (req, res) => {
-  const restaurant = await Restaurant.find({})
-  res.send(restaurant)
+  const restaurants = await Restaurant.find({})
+  const result = await Promise.all(restaurants.map(async rest => {
+    const user = await User.findOne({ _id: rest.userId })
+    return {
+      _id: rest._id,
+      menu: rest.menu,
+      isOpened: rest.isOpened,
+      name: user.username,
+      userId: rest.userId
+    }
+  }))
+
+  res.send(result)
 })
 
 app.listen(PORT, () => console.log(`App is listening on port ${PORT}!`))
