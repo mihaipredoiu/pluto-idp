@@ -1,13 +1,24 @@
 const term = require('terminal-kit').terminal
-const { register, login, getRestaurants, getRestaurant, addProduct, addOrder, getRestaurantOrders } = require('./services')
 const Table = require("terminal-table");
 
+const {
+  register,
+  login,
+  getRestaurants,
+  getRestaurant,
+  addProduct,
+  addOrder,
+  getRestaurantOrders
+} = require('./services')
 
+
+/* --------------------------- 🌐 Global Variables -------------------------- */
 let token = ''
 let cart = []
 let globalUsername = ''
 let globalRole = ''
 let globalId = ''
+
 
 const displayHeader = () => {
   term.clear()
@@ -18,6 +29,7 @@ const displayHeader = () => {
   }
 }
 
+/* --------------------------------- Signup --------------------------------- */
 const signupForm = () => {
   let username
   let password
@@ -55,6 +67,21 @@ const signupForm = () => {
   })
 }
 
+const signupHandler = async (username, password, role) => {
+  try {
+    const response = await register(username, password, role)
+
+    term.green(`${response}.\n`)
+  }
+  catch (e) {
+    term.red(`${response}.\n`)
+  }
+  finally {
+    main()
+  }
+}
+
+/* ---------------------------------- Login --------------------------------- */
 const loginForm = () => {
   let username
   let password
@@ -73,7 +100,25 @@ const loginForm = () => {
   })
 }
 
-const restaurantMenu = (menu, restaurantId) => {
+const loginHandler = async (username, password) => {
+  const response = await login(username, password)
+  if (response) {
+    token = response.token
+    globalUsername = username
+    globalRole = response.role
+    globalId = response._id
+    if (response.role == 'restaurant') {
+      displayRestaurantMainMenu(response._id)
+    } else {
+      appMenu()
+    }
+  } else {
+    term.red(`${response}.\n`)
+    main()
+  }
+}
+
+const displayRestaurantMenu = (menu, restaurantId) => {
   formattedMenu = menu.map(element => `${element.name}\t${element.price}\t${element.description}`)
   formattedMenu.push('Place Order')
   formattedMenu.push('Back')
@@ -104,12 +149,12 @@ const restaurantMenu = (menu, restaurantId) => {
         break
       default:
         cart.push(menu[response.selectedIndex])
-        restaurantMenu(menu, restaurantId)
+        displayRestaurantMenu(menu, restaurantId)
     }
   })
 }
 
-const addProductScreen = (id) => {
+const displayProductAdd = (id) => {
   let name
   let price
   let description
@@ -127,7 +172,7 @@ const addProductScreen = (id) => {
         description = input
 
         addProduct(name, price, description, id)
-        restaurantUserMenu(id)
+        displayRestaurantMainMenu(id)
       })
     })
   })
@@ -150,11 +195,11 @@ const watchOrders = async (id) => {
   })
 
   term.singleColumnMenu(['Back'], (_, response) => {
-    restaurantUserMenu(id)
+    displayRestaurantMainMenu(id)
   })
 }
 
-const restaurantUserMenu = async (id) => {
+const displayRestaurantMainMenu = async (id) => {
   const restaurant = await getRestaurant(id)
 
   displayHeader()
@@ -171,7 +216,7 @@ const restaurantUserMenu = async (id) => {
   term.singleColumnMenu(choicesList, (_, response) => {
     switch (response.selectedIndex) {
       case 0:
-        addProductScreen(id)
+        displayProductAdd(id)
         break
       case 1:
         watchOrders(id)
@@ -194,36 +239,11 @@ const appMenu = async () => {
       process.exit()
     }
 
-    restaurantMenu(restaurants[response.selectedIndex].menu, restaurants[response.selectedIndex]._id)
+    displayRestaurantMenu(
+      restaurants[response.selectedIndex].menu,
+      restaurants[response.selectedIndex]._id
+    )
   })
-}
-
-const loginHandler = async (username, password) => {
-  const response = await login(username, password)
-  if (response) {
-    token = response.token
-    globalUsername = username
-    globalRole = response.role
-    globalId = response._id
-    if (response.role == 'restaurant') {
-      restaurantUserMenu(response._id)
-    } else {
-      appMenu()
-    }
-  } else {
-    term.red(`${response}.\n`)
-    main()
-  }
-}
-
-const signupHandler = async (username, password, role) => {
-  const response = await register(username, password, role)
-  if (response) {
-    term.green(`${response}.\n`)
-  } else {
-    term.red(`${response}.\n`)
-  }
-  main()
 }
 
 const main = async () => {
@@ -249,7 +269,6 @@ const main = async () => {
         process.exit()
     }
   })
-
 }
 
 main()

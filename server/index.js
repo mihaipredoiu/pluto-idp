@@ -2,7 +2,6 @@
 
 const express = require('express')
 const session = require('express-session')
-const cookieParser = require('cookie-parser')
 const mongoose = require('mongoose')
 const cors = require('cors')
 const axios = require('axios')
@@ -16,7 +15,6 @@ app.use(session({
   saveUninitialized: false,
   cookie: { secure: false }
 }))
-app.use(cookieParser())
 app.use(express.json())
 app.use(cors({
   credentials: true, // enable set cookie
@@ -27,13 +25,13 @@ const PORT = 8080
 // Connect to MongoDB
 mongoose
   .connect(
-    'mongodb://localhost:27017/',
+    'mongodb://database:27017/',
     {
       useNewUrlParser: true,
       useUnifiedTopology: true
     }
   )
-  .then(() => console.log('MongoDB Connected'))
+  .then(() => console.log('✅ Server connected to database'))
   .catch(err => console.log(err))
 
 const User = require('./data/models/Users.js')
@@ -104,6 +102,7 @@ app.post('/api/users/register', async (req, res) => {
   try {
     const hash = password.hashCode()
     const currentUser = await User.findOne({ username })
+
     if (currentUser) {
       res.status(500).send('Username already exists in database')
     } else {
@@ -147,7 +146,7 @@ app.post('/api/orders', async (req, res) => {
 
     newOrder.save()
       .then(() => {
-        axios.post('http://localhost:8082/api/notify', { email: 'predoiumihai@gmail.com', receipt: cart.map(item => ({ productName: item.name, price: item.price })) })
+        axios.post('http://notifier:8082/api/notify', { email: 'predoiumihai@gmail.com', receipt: cart.map(item => ({ productName: item.name, price: item.price })) })
         console.log(cart)
         res.send('Order registered sucessfully')
       })
@@ -273,4 +272,4 @@ app.get('/api/restaurants', async (req, res) => {
   res.send(result)
 })
 
-app.listen(PORT, () => console.log(`App is listening on port ${PORT}!`))
+app.listen(PORT, () => console.log(`Server is listening on port ${PORT}!`))

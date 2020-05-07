@@ -10,6 +10,4 @@ RUN npm install
 COPY . /client
 
 
-EXPOSE 3002
-CMD [ "npm", "run", "start" ]
-
+EXPOSE 8081

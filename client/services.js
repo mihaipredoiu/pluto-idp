@@ -7,7 +7,7 @@ axios.defaults.headers.common['connection'] = 'keep-alive'
 module.exports = {
   status: async (token) => {
     try {
-      const res = await axios.get('http://localhost:8080/api/status', {
+      const res = await axios.get('http://server:8080/api/status', {
         headers: { Authorization: 'Bearer ' + token }
       })
       return `\nLogged in as ${res.data.username}`
@@ -19,7 +19,7 @@ module.exports = {
 
   register: async (username, password, role) => {
     try {
-      const res = await axios.post('http://localhost:8080/api/users/register', {
+      const res = await axios.post('http://server:8080/api/users/register', {
         username,
         password,
         role
@@ -33,7 +33,7 @@ module.exports = {
 
   login: async (username, password) => {
     try {
-      const res = await axios.post('http://localhost:8080/api/users/login', {
+      const res = await axios.post('http://server:8080/api/users/login', {
         username,
         password
       })
@@ -46,7 +46,7 @@ module.exports = {
 
   getRestaurants: async () => {
     try {
-      const res = await axios.get('http://localhost:8080/api/restaurants')
+      const res = await axios.get('http://server:8080/api/restaurants')
 
       return res.data
     }
@@ -57,7 +57,7 @@ module.exports = {
 
   getRestaurant: async (id) => {
     try {
-      const res = await axios.get(`http://localhost:8080/api/restaurants/${id}`)
+      const res = await axios.get(`http://server:8080/api/restaurants/${id}`)
 
       return res.data
     }
@@ -68,7 +68,7 @@ module.exports = {
 
   addProduct: async (name, price, description, id) => {
     try {
-      const res = await axios.put(`http://localhost:8080/api/restaurants/${id}`, [{
+      const res = await axios.put(`http://server:8080/api/restaurants/${id}`, [{
         name,
         price,
         description
@@ -82,7 +82,7 @@ module.exports = {
 
   addOrder: async (clientId, restaurantId, cart) => {
     try {
-      const res = await axios.post(`http://localhost:8080/api/orders`, {
+      const res = await axios.post(`http://server:8080/api/orders`, {
         clientId,
         restaurantId,
         cart
@@ -96,7 +96,7 @@ module.exports = {
 
   getRestaurantOrders: async (id) => {
     try {
-      const res = await axios.get(`http://localhost:8080/api/orders/${id}`)
+      const res = await axios.get(`http://server:8080/api/orders/${id}`)
       return res.data
     }
     catch (e) {
