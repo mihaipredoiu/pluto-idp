@@ -1,0 +1,22 @@
+{
+  "name": "pluto_idp_client",
+  "version": "1.0.0",
+  "description": "Pluto Client",
+  "main": "index.js",
+  "author": "Mihai Predoiu",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "start": "node index.js",
+    "start.dev": "nodemon -L index.js"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.3"
+  },
+  "dependencies": {
+    "axios": "^0.19.2",
+    "request": "^2.88.2",
+    "terminal-kit": "^1.35.2",
+    "terminal-table": "^0.0.12"
+  }
+}
