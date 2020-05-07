@@ -1,7 +1,7 @@
 // 📧 Send notify email
 
 POST /api/notify/ HTTP/1.1
-Host: localhost:8081
+Host: localhost:8082
 Content-Type: application/json
 cache-control: no-cache
 
