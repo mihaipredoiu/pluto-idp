@@ -5,10 +5,11 @@ const session = require('express-session')
 const mongoose = require('mongoose')
 const cors = require('cors')
 const axios = require('axios')
-
 const jwt = require('jsonwebtoken');
+const promMid = require('express-prometheus-middleware');
 
 const app = express()
+
 app.use(session({
   secret: 'secret',
   resave: false,
@@ -16,8 +17,15 @@ app.use(session({
   cookie: { secure: false }
 }))
 app.use(express.json())
+
 app.use(cors({
   credentials: true, // enable set cookie
+}));
+
+app.use(promMid({
+  metricsPath: '/metrics',
+  collectDefaultMetrics: true,
+  requestDurationBuckets: [0.1, 0.5, 1, 1.5],
 }));
 
 const PORT = 8080

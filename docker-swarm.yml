@@ -2,44 +2,45 @@ version: '3'
 
 services:
   server:
-    container_name: server
-    build: ./server
+    image: mihaipredoiu/pluto-idp-server:latest
+    deploy:
+      restart_policy:
+        condition: on-failure
     ports:
       - '8080:8080'
-    links:
-      - database
     networks:
       - 'plutonet'
-
   client:
-    container_name: client
-    build: ./client
+    image: mihaipredoiu/pluto-idp-client:latest
+    deploy:
+      replicas: 4
+      restart_policy:
+        condition: on-failure
     ports:
       - '8081:8081'
     command: tail -f /dev/null
     networks:
       - 'plutonet'
-
   notifier:
-    container_name: notifier
-    build: ./email_notifier
+    image: mihaipredoiu/pluto-idp-notifier:latest
     ports:
       - '8082:8082'
     networks:
       - 'plutonet'
-
   database:
-    container_name: database
     image: mongo:latest
+    deploy:
+      placement:
+        constraints: [node.role == manager]
     ports:
       - '27017:27017'
-    volumes:
-      - mongo_data:/data/db:rw
     networks:
       - 'plutonet'
+    volumes:
+      - mongo_data:/data/db:rw
 
   prometheus:
-    image: mihaipredoiu/pluto-idp-metrics
+    image: mihaipredoiu/pluto-idp-metrics:latest
     ports:
       - '9090:9090'
     networks:
